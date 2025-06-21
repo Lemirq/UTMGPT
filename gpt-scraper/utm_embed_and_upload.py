@@ -17,9 +17,11 @@ model = SentenceTransformer("all-MiniLM-L6-v2")
 input_folder = "utm_pages"
 CHUNK_SIZE = 200
 seen_file = "seen.json"
+progress_file = "last_processed_file.txt"
 BATCH_EMBED = 32
 BATCH_UPLOAD = 50
-FILES_PER_PASS = 2500
+FILES_PER_PASS = 500
+MAX_FILES = None  # Maximum total files to process (set to None for no limit)
 
 print("🚀 Starting vectorization pipeline...")
 
@@ -47,10 +49,34 @@ def save_seen():
     with open(seen_file, "w") as f:
         json.dump(list(seen_hashes), f)
 
+def load_last_processed_index():
+    if os.path.exists(progress_file):
+        with open(progress_file, "r") as f:
+            return int(f.read().strip())
+    return 0
+
+def save_last_processed_index(index):
+    with open(progress_file, "w") as f:
+        f.write(str(index))
+
 # Get ALL files, sort them for consistent ordering
 all_filenames = sorted(os.listdir(input_folder))
+total_available_files = len(all_filenames)
+
+# Load last processed file index
+last_processed_idx = load_last_processed_index()
+print(f"📄 Last processed file index: {last_processed_idx}")
+
+# Start from where we left off
+all_filenames = all_filenames[last_processed_idx:]
+
+if MAX_FILES is not None:
+    all_filenames = all_filenames[:MAX_FILES]
+    print(f"🎯 Limited to {MAX_FILES} files (out of {total_available_files} total)")
+
 total_files = len(all_filenames)
 start_idx = 0
+print(f"📊 Will process {total_files} files starting from index {last_processed_idx}")
 
 uploaded_total = 0
 
@@ -61,10 +87,12 @@ while start_idx < total_files:
     if not batch_files:
         break
 
-    print(f"\n📦 Processing batch: files {start_idx + 1}–{start_idx + len(batch_files)} of {total_files}")
+    actual_file_indices = range(last_processed_idx + start_idx + 1, last_processed_idx + start_idx + len(batch_files) + 1)
+    print(f"\n📦 Processing batch: files {actual_file_indices.start}–{actual_file_indices.stop - 1} of {total_available_files}")
 
     for file_idx, filename in enumerate(batch_files, start=start_idx + 1):
-        print(f"📄 File {file_idx}/{total_files}: {filename}")
+        actual_file_idx = last_processed_idx + file_idx
+        print(f"📄 File {actual_file_idx}/{total_available_files}: {filename}")
         path = os.path.join(input_folder, filename)
         with open(path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -82,6 +110,9 @@ while start_idx < total_files:
 
     if not new_chunks:
         print("🟡 No new data found in this batch. Moving to next batch...\n")
+        # Still need to update progress even when no new chunks found
+        last_processed_idx += len(batch_files)
+        save_last_processed_index(last_processed_idx)
         start_idx += FILES_PER_PASS
         continue
 
@@ -151,6 +182,13 @@ while start_idx < total_files:
             print(f"⚠️ Error during final batch upload: {e}")
 
     save_seen()
+    # Update the last processed file index
+    last_processed_idx += len(batch_files)
+    save_last_processed_index(last_processed_idx)
     start_idx += FILES_PER_PASS
 
 print(f"\n🎉 All done. Total chunks uploaded: {uploaded_total}")
+if MAX_FILES is not None:
+    print(f"📊 Processed {total_files} files (limited by MAX_FILES={MAX_FILES})")
+print(f"📍 Last processed file index: {last_processed_idx}")
+print(f"💡 Next run will start from file index {last_processed_idx}")

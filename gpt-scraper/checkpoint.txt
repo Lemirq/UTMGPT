@@ -1,5 +1,5 @@
-Scraped: 25061
-Queue: 5595
-Active threads: 25
-Counter: 25066
-Timestamp: 2025-06-20 17:26:37
+Scraped: 34529
+Queue: 4
+Active threads: 4
+Counter: 34529
+Timestamp: 2025-06-20 18:07:30

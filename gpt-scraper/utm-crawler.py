@@ -83,7 +83,7 @@ def is_valid(link):
     return (
         (is_utm_domain or utm_related_calendar)
         and "#" not in link
-        and not any(ext in link.lower() for ext in [".pdf", ".jpg", ".jpeg", ".png", ".svg", ".zip", ".doc", ".docx", ".mp3", ".csv", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".rtf", ".odt", ".ods", ".odp", ".gif", ".bmp", ".tiff", ".webp", ".ico", ".mp4", ".avi", ".mov", ".wmv", ".flv", ".webm", ".mkv", ".wav", ".flac", ".aac", ".ogg", ".wma", ".m4a", ".tar", ".gz", ".rar", ".7z", ".bz2", ".exe", ".msi", ".dmg", ".deb", ".rpm", ".apk", ".ipa", ".swf", ".fla", ".psd", ".ai", ".eps", ".indd", ".sketch", ".fig", ".xml", ".json", ".yaml", ".yml", ".sql", ".db", ".sqlite", ".mdb", ".accdb", ".log", ".tmp", ".bak", ".old", ".orig", ".backup"])
+        and not any(ext in link_lower for ext in [".pdf", ".jpg", ".jpeg", ".png", ".svg", ".zip", ".doc", ".docx", ".mp3", ".csv", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".rtf", ".odt", ".ods", ".odp", ".gif", ".bmp", ".tiff", ".webp", ".ico", ".mp4", ".avi", ".mov", ".wmv", ".flv", ".webm", ".mkv", ".wav", ".flac", ".aac", ".ogg", ".wma", ".m4a", ".tar", ".gz", ".rar", ".7z", ".bz2", ".exe", ".msi", ".dmg", ".deb", ".rpm", ".apk", ".ipa", ".swf", ".fla", ".psd", ".ai", ".eps", ".indd", ".sketch", ".fig", ".xml", ".json", ".yaml", ".yml", ".sql", ".db", ".sqlite", ".mdb", ".accdb", ".log", ".tmp", ".bak", ".old", ".orig", ".backup"])
         and not link_lower.endswith(".pdf")
         and "download?inline" not in link_lower
         and not link_lower.endswith(".doc")
