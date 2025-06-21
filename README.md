@@ -26,7 +26,7 @@ graph TD
         H --> I{Vector Embeddings};
     end
 
-    subgraph "Vector DB"
+    subgraph VectorDB ["Vector DB"]
         I --> J[(Supabase PGVector)];
     end
 
@@ -43,7 +43,7 @@ graph TD
     end
 
     style gpt-scraper fill:#f9f9f9,stroke:#333,stroke-width:2px
-    style "Vector DB" fill:#f9f9f9,stroke:#333,stroke-width:2px
+    style VectorDB fill:#f9f9f9,stroke:#333,stroke-width:2px
     style utmgpt-chat fill:#f9f9f9,stroke:#333,stroke-width:2px
 ```
 
