@@ -4,7 +4,7 @@ UTM-GPT is a full-stack AI-powered chatbot designed to answer questions about th
 
 ## ✨ Features
 
-- **Comprehensive Knowledge Base**: The chatbot's knowledge is built upon a vast collection of documents scraped from the UTM website and related academic calendars.
+- **Comprehensive Knowledge Base**: The chatbot's knowledge is built upon a vast collection of documents (30k+) scraped from the UTM website and related academic calendars.
 - **AI-Powered Chat Interface**: A user-friendly, responsive chat interface built with Next.js and Tailwind CSS for seamless interaction.
 - **Intelligent Search**: Leverages vector embeddings and semantic search to find the most relevant information to answer user queries.
 - **Extensible & Scalable**: The architecture is modular, allowing for easy expansion of the knowledge base and integration of new features.
