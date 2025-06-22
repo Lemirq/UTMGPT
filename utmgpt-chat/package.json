@@ -26,6 +26,8 @@
     "@types/node": "20.12.12",
     "@types/react": "18.3.2",
     "@types/react-dom": "18.3.0",
+    "@upstash/ratelimit": "^2.0.5",
+    "@vercel/kv": "^3.0.0",
     "ai": "^3.1.12",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

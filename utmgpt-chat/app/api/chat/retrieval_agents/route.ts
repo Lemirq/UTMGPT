@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Message as VercelChatMessage, StreamingTextResponse } from 'ai';
+import { Ratelimit } from '@upstash/ratelimit';
+import kv from '@/utils/kv';
 
 import { createClient } from '@supabase/supabase-js';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
@@ -58,6 +60,26 @@ If you don't know how to answer a question or need more specific information abo
  * https://js.langchain.com/docs/use_cases/question_answering/conversational_retrieval_agents
  */
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for') ?? '127.0.0.1';
+  const ratelimit = new Ratelimit({
+    redis: kv,
+    // 5 requests from the same IP in 10 seconds
+    limiter: Ratelimit.slidingWindow(10, '60 s'),
+  });
+
+  const { success, limit, reset, remaining } = await ratelimit.limit(`ratelimit_${ip}`);
+
+  if (!success) {
+    return new Response('You have reached your request limit for now.', {
+      status: 429,
+      headers: {
+        'X-RateLimit-Limit': limit.toString(),
+        'X-RateLimit-Remaining': remaining.toString(),
+        'X-RateLimit-Reset': reset.toString(),
+      },
+    });
+  }
+
   try {
     const body = await req.json();
     /**
@@ -74,10 +96,9 @@ export async function POST(req: NextRequest) {
     console.log('🔧 Return intermediate steps:', returnIntermediateSteps);
 
     const chatModel = new ChatGoogleGenerativeAI({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-1.5-flash',
       temperature: 0.3,
       maxRetries: 2, // Add retry limit
-      timeout: 30000, // 30 second timeout
     });
 
     console.log('🤖 Gemini model initialized');
@@ -88,7 +109,6 @@ export async function POST(req: NextRequest) {
     const vectorstore = new SupabaseVectorStore(
       new HuggingFaceTransformersEmbeddings({
         model: 'Xenova/all-MiniLM-L6-v2',
-        timeout: 20000, // 20 second timeout for embeddings
       }),
       {
         client,
@@ -104,9 +124,7 @@ export async function POST(req: NextRequest) {
     const retriever = vectorstore.asRetriever({
       k: 15, // Further reduced to 3 for faster processing
       searchType: 'similarity',
-      searchKwargs: {
-        fetchK: 30, // Fetch more initially but return only top 3
-      },
+
       callbacks: [
         {
           handleRetrieverEnd(documents) {
@@ -195,19 +213,7 @@ export async function POST(req: NextRequest) {
       });
 
       // Prepare sources for response headers
-      const serializedSources =
-        capturedSources.length > 0
-          ? Buffer.from(
-              JSON.stringify(
-                capturedSources.map((doc) => {
-                  return {
-                    pageContent: doc.pageContent.slice(0, 50) + '...',
-                    metadata: doc.metadata,
-                  };
-                })
-              )
-            ).toString('base64')
-          : '';
+      const serializedSources = capturedSources.length > 0 ? Buffer.from(JSON.stringify(capturedSources)).toString('base64') : '';
 
       const headers: Record<string, string> = {
         'x-message-index': (messages.length + 1).toString(),
@@ -242,19 +248,7 @@ export async function POST(req: NextRequest) {
       console.log('📊 Final captured sources for response:', capturedSources.length);
 
       // Prepare sources for response headers
-      const serializedSources =
-        capturedSources.length > 0
-          ? Buffer.from(
-              JSON.stringify(
-                capturedSources.map((doc) => {
-                  return {
-                    pageContent: doc.pageContent.slice(0, 50) + '...',
-                    metadata: doc.metadata,
-                  };
-                })
-              )
-            ).toString('base64')
-          : '';
+      const serializedSources = capturedSources.length > 0 ? Buffer.from(JSON.stringify(capturedSources)).toString('base64') : '';
 
       const headers: Record<string, string> = {};
 
