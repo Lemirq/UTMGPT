@@ -1,28 +1,22 @@
-import { NextRequest, NextResponse } from "next/server";
-import { Message as VercelChatMessage, StreamingTextResponse } from "ai";
+import { NextRequest, NextResponse } from 'next/server';
+import { Message as VercelChatMessage, StreamingTextResponse } from 'ai';
 
-import { createClient } from "@supabase/supabase-js";
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { HuggingFaceTransformersEmbeddings } from "@langchain/community/embeddings/huggingface_transformers";
+import { createClient } from '@supabase/supabase-js';
+import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
+import { HuggingFaceTransformersEmbeddings } from '@langchain/community/embeddings/huggingface_transformers';
 
-import { SupabaseVectorStore } from "@langchain/community/vectorstores/supabase";
-import {
-  AIMessage,
-  BaseMessage,
-  ChatMessage,
-  HumanMessage,
-  SystemMessage,
-} from "@langchain/core/messages";
-import { createRetrieverTool } from "langchain/tools/retriever";
-import { createReactAgent } from "@langchain/langgraph/prebuilt";
-import { Document } from "@langchain/core/documents";
+import { SupabaseVectorStore } from '@langchain/community/vectorstores/supabase';
+import { AIMessage, BaseMessage, ChatMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
+import { createRetrieverTool } from 'langchain/tools/retriever';
+import { createReactAgent } from '@langchain/langgraph/prebuilt';
+import { Document } from '@langchain/core/documents';
 
 // Removed edge runtime to support HuggingFace transformers
 
 const convertVercelMessageToLangChainMessage = (message: VercelChatMessage) => {
-  if (message.role === "user") {
+  if (message.role === 'user') {
     return new HumanMessage(message.content);
-  } else if (message.role === "assistant") {
+  } else if (message.role === 'assistant') {
     return new AIMessage(message.content);
   } else {
     return new ChatMessage(message.content, message.role);
@@ -30,12 +24,12 @@ const convertVercelMessageToLangChainMessage = (message: VercelChatMessage) => {
 };
 
 const convertLangChainMessageToVercelMessage = (message: BaseMessage) => {
-  if (message._getType() === "human") {
-    return { content: message.content, role: "user" };
-  } else if (message._getType() === "ai") {
+  if (message._getType() === 'human') {
+    return { content: message.content, role: 'user' };
+  } else if (message._getType() === 'ai') {
     return {
       content: message.content,
-      role: "assistant",
+      role: 'assistant',
       tool_calls: (message as AIMessage).tool_calls,
     };
   } else {
@@ -71,61 +65,55 @@ export async function POST(req: NextRequest) {
      * but don't want them in the chat history.
      */
     const messages = (body.messages ?? [])
-      .filter(
-        (message: VercelChatMessage) =>
-          message.role === "user" || message.role === "assistant",
-      )
+      .filter((message: VercelChatMessage) => message.role === 'user' || message.role === 'assistant')
       .map(convertVercelMessageToLangChainMessage);
     const returnIntermediateSteps = body.show_intermediate_steps;
 
-    console.log("🤖 UTM Agent Process Started");
-    console.log("💬 Messages count:", messages.length);
-    console.log("🔧 Return intermediate steps:", returnIntermediateSteps);
+    console.log('🤖 UTM Agent Process Started');
+    console.log('💬 Messages count:', messages.length);
+    console.log('🔧 Return intermediate steps:', returnIntermediateSteps);
 
     const chatModel = new ChatGoogleGenerativeAI({
-      model: "gemini-2.0-flash",
+      model: 'gemini-2.0-flash',
       temperature: 0.3,
       maxRetries: 2, // Add retry limit
       timeout: 30000, // 30 second timeout
     });
 
-    console.log("🤖 Gemini model initialized");
+    console.log('🤖 Gemini model initialized');
 
-    const client = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_PRIVATE_KEY!,
-    );
-    console.log("🗄️ Supabase client connected");
+    const client = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+    console.log('🗄️ Supabase client connected');
 
     const vectorstore = new SupabaseVectorStore(
       new HuggingFaceTransformersEmbeddings({
-        model: "Xenova/all-MiniLM-L6-v2",
+        model: 'Xenova/all-MiniLM-L6-v2',
         timeout: 20000, // 20 second timeout for embeddings
       }),
       {
         client,
-        tableName: "utmgpt_chunks",
-        queryName: "match_documents_uuid",
-      },
+        tableName: 'utmgpt_chunks',
+        queryName: 'match_documents_uuid',
+      }
     );
-    console.log("🧠 Vector store initialized with HuggingFace embeddings");
+    console.log('🧠 Vector store initialized with HuggingFace embeddings');
 
     // Store sources for later retrieval using global variable
     let capturedSources: Document[] = [];
 
     const retriever = vectorstore.asRetriever({
       k: 15, // Further reduced to 3 for faster processing
-      searchType: "similarity",
+      searchType: 'similarity',
       searchKwargs: {
         fetchK: 30, // Fetch more initially but return only top 3
       },
       callbacks: [
         {
           handleRetrieverEnd(documents) {
-            console.log("📚 Agent retrieved documents:", documents.length);
+            console.log('📚 Agent retrieved documents:', documents.length);
             // Capture sources for response headers
             capturedSources = [...capturedSources, ...documents];
-            console.log("🔗 Captured sources count:", capturedSources.length);
+            console.log('🔗 Captured sources count:', capturedSources.length);
           },
         },
       ],
@@ -136,12 +124,12 @@ export async function POST(req: NextRequest) {
      * usable form.
      */
     const tool = createRetrieverTool(retriever, {
-      name: "search_utm_information",
+      name: 'search_utm_information',
       description:
-        "Search UTM information. Use this when you need specific details about University of Toronto Mississauga programs, admissions, buildings, services, or policies.",
+        'Search UTM information. Use this when you need specific details about University of Toronto Mississauga programs, admissions, buildings, services, or policies.',
     });
 
-    console.log("🔧 UTM search tool created");
+    console.log('🔧 UTM search tool created');
 
     /**
      * Use a prebuilt LangGraph agent.
@@ -158,37 +146,32 @@ export async function POST(req: NextRequest) {
       messageModifier: new SystemMessage(AGENT_SYSTEM_TEMPLATE),
     });
 
-    console.log("🤖 UTM ReAct agent created");
+    console.log('🤖 UTM ReAct agent created');
 
     if (!returnIntermediateSteps) {
       /**
        * For streaming mode, we need to run the agent first to capture sources,
        * then stream the final response.
        */
-      console.log("🌊 Running agent to capture sources first...");
+      console.log('🌊 Running agent to capture sources first...');
 
       const result = await agent.invoke(
         { messages },
         {
           recursionLimit: 5,
-          configurable: { thread_id: "utm-chat" },
-        },
+          configurable: { thread_id: 'utm-chat' },
+        }
       );
 
-      console.log("✅ Agent completed");
-      console.log("📊 Result messages count:", result.messages.length);
-      console.log(
-        "📊 Final captured sources for response:",
-        capturedSources.length,
-      );
+      console.log('✅ Agent completed');
+      console.log('📊 Result messages count:', result.messages.length);
+      console.log('📊 Final captured sources for response:', capturedSources.length);
 
       // Get the final assistant message
-      const finalMessage = result.messages.find(
-        (msg) => msg._getType() === "ai" && msg.content,
-      );
+      const finalMessage = result.messages.find((msg) => msg._getType() === 'ai' && msg.content);
 
       if (!finalMessage) {
-        throw new Error("No final response from agent");
+        throw new Error('No final response from agent');
       }
 
       // Stream the final response
@@ -218,23 +201,23 @@ export async function POST(req: NextRequest) {
               JSON.stringify(
                 capturedSources.map((doc) => {
                   return {
-                    pageContent: doc.pageContent.slice(0, 50) + "...",
+                    pageContent: doc.pageContent.slice(0, 50) + '...',
                     metadata: doc.metadata,
                   };
-                }),
-              ),
-            ).toString("base64")
-          : "";
+                })
+              )
+            ).toString('base64')
+          : '';
 
       const headers: Record<string, string> = {
-        "x-message-index": (messages.length + 1).toString(),
+        'x-message-index': (messages.length + 1).toString(),
       };
 
       if (serializedSources) {
-        headers["x-sources"] = serializedSources;
-        console.log("📤 Sending sources in headers");
+        headers['x-sources'] = serializedSources;
+        console.log('📤 Sending sources in headers');
       } else {
-        console.log("❌ No sources to send");
+        console.log('❌ No sources to send');
       }
 
       return new StreamingTextResponse(transformStream, { headers });
@@ -244,22 +227,19 @@ export async function POST(req: NextRequest) {
        * they are generated as JSON objects, so streaming and displaying them with
        * the AI SDK is more complicated.
        */
-      console.log("🔄 Running agent with intermediate steps...");
+      console.log('🔄 Running agent with intermediate steps...');
 
       const result = await agent.invoke(
         { messages },
         {
           recursionLimit: 5,
-          configurable: { thread_id: "utm-chat" },
-        },
+          configurable: { thread_id: 'utm-chat' },
+        }
       );
 
-      console.log("✅ Agent completed, returning messages");
-      console.log("📊 Result messages count:", result.messages.length);
-      console.log(
-        "📊 Final captured sources for response:",
-        capturedSources.length,
-      );
+      console.log('✅ Agent completed, returning messages');
+      console.log('📊 Result messages count:', result.messages.length);
+      console.log('📊 Final captured sources for response:', capturedSources.length);
 
       // Prepare sources for response headers
       const serializedSources =
@@ -268,29 +248,29 @@ export async function POST(req: NextRequest) {
               JSON.stringify(
                 capturedSources.map((doc) => {
                   return {
-                    pageContent: doc.pageContent.slice(0, 50) + "...",
+                    pageContent: doc.pageContent.slice(0, 50) + '...',
                     metadata: doc.metadata,
                   };
-                }),
-              ),
-            ).toString("base64")
-          : "";
+                })
+              )
+            ).toString('base64')
+          : '';
 
       const headers: Record<string, string> = {};
 
       if (serializedSources) {
-        headers["x-message-index"] = (messages.length + 1).toString();
-        headers["x-sources"] = serializedSources;
-        console.log("📤 Sending sources in headers for intermediate steps");
+        headers['x-message-index'] = (messages.length + 1).toString();
+        headers['x-sources'] = serializedSources;
+        console.log('📤 Sending sources in headers for intermediate steps');
       } else {
-        console.log("❌ No sources to send for intermediate steps");
+        console.log('❌ No sources to send for intermediate steps');
       }
 
       // Prepare sources data
-      console.log("🔍 Debug captured sources structure:");
+      console.log('🔍 Debug captured sources structure:');
       capturedSources.forEach((doc, i) => {
         console.log(`Source ${i}:`, {
-          pageContent: doc.pageContent?.slice(0, 50) + "...",
+          pageContent: doc.pageContent?.slice(0, 50) + '...',
           metadata: doc.metadata,
           hasUrl: !!doc.metadata?.url,
         });
@@ -299,16 +279,16 @@ export async function POST(req: NextRequest) {
       const sourcesData = capturedSources.map((doc) => {
         // Try to extract URL from different possible locations
         const url = doc.metadata?.url || doc.url || null;
-        console.log("🔗 Extracting URL:", { url, metadata: doc.metadata });
+        console.log('🔗 Extracting URL:', { url, metadata: doc.metadata });
 
         return {
-          pageContent: doc.pageContent.slice(0, 100) + "...",
+          pageContent: doc.pageContent.slice(0, 100) + '...',
           metadata: doc.metadata,
           url: url,
         };
       });
 
-      console.log("📤 Final sources data being sent:", sourcesData);
+      console.log('📤 Final sources data being sent:', sourcesData);
 
       return NextResponse.json(
         {
@@ -317,12 +297,12 @@ export async function POST(req: NextRequest) {
         },
         {
           status: 200,
-        },
+        }
       );
     }
   } catch (e: any) {
-    console.error("❌ UTM Agent Error:", e.message);
-    console.error("🔍 Error details:", e);
+    console.error('❌ UTM Agent Error:', e.message);
+    console.error('🔍 Error details:', e);
     return NextResponse.json({ error: e.message }, { status: e.status ?? 500 });
   }
 }
