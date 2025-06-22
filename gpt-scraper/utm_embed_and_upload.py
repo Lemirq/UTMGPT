@@ -9,9 +9,9 @@ from time import sleep
 
 # Load environment variables
 load_dotenv()
-SUPABASE_URL: str = os.getenv("SUPABASE_URL")
+NEXT_PUBLIC_SUPABASE_URL: str = os.getenv("SUPABASE_URL")
 SUPABASE_KEY: str = os.getenv("SUPABASE_KEY")
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+supabase = create_client(NEXT_PUBLIC_SUPABASE_URL, SUPABASE_KEY)
 
 model = SentenceTransformer("all-MiniLM-L6-v2")
 input_folder = "utm_pages"

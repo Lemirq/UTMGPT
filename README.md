@@ -63,7 +63,7 @@ You'll need to set up environment variables for both the scraper and the chat ap
 **For `gpt-scraper`**: Create a `.env` file in the `gpt-scraper` directory:
 
 ```
-SUPABASE_URL="YOUR_SUPABASE_URL"
+NEXT_PUBLIC_SUPABASE_URL="YOUR_NEXT_PUBLIC_SUPABASE_URL"
 SUPABASE_KEY="YOUR_SUPABASE_SERVICE_ROLE_KEY"
 ```
 
@@ -71,7 +71,7 @@ SUPABASE_KEY="YOUR_SUPABASE_SERVICE_ROLE_KEY"
 
 ```
 # Supabase
-NEXT_PUBLIC_SUPABASE_URL="YOUR_SUPABASE_URL"
+NEXT_PUBLIC_NEXT_PUBLIC_SUPABASE_URL="YOUR_NEXT_PUBLIC_SUPABASE_URL"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY"
 
 # AI Models (choose one or more)
