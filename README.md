@@ -175,3 +175,5 @@ The `utmgpt-chat` is a Next.js application that provides the chat interface.
 │   └── ...
 └── README.md
 ```
+
+Disclaimer: This application is not associated with the University of Toronto in any way
