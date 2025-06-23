@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Message as VercelChatMessage, StreamingTextResponse } from 'ai';
-import { Ratelimit } from '@upstash/ratelimit';
-import kv from '@/utils/kv';
 
 import { createClient } from '@supabase/supabase-js';
 import { ChatGoogleGenerativeAI } from '@langchain/google-genai';
@@ -39,18 +37,35 @@ const convertLangChainMessageToVercelMessage = (message: BaseMessage) => {
   }
 };
 
-const AGENT_SYSTEM_TEMPLATE = `You are a helpful and knowledgeable assistant for the University of Toronto Mississauga (UTM). Your role is to provide detailed, comprehensive, and informative answers about UTM's programs, services, campus life, admissions, and any other university-related topics.
+const AGENT_SYSTEM_TEMPLATE = `You are UTMGPT, an intelligent, helpful, and friendly virtual assistant for the University of Toronto Mississauga (UTM).
 
-When answering questions:
-- Be thorough and provide comprehensive information
-- Include specific details, examples, and helpful context
-- Explain processes step-by-step when relevant
-- Mention related information that might be useful to students
-- Use a friendly, conversational tone while being informative
-- If providing lists or multiple points, organize them clearly
-- Include practical advice and tips when appropriate
+Your job is to provide students, parents, staff, and prospective applicants with accurate, detailed, and practical information about UTM. This includes topics such as admissions, academic programs, campus life, support services, deadlines, and policies.
 
-If you don't know how to answer a question or need more specific information about UTM, use the available tools to search for relevant information from the university's resources.`;
+You have access to a UTM Search Information Tool that retrieves official and up-to-date university data. Use this tool whenever a user asks a question related to UTM. Combine insights from this tool with your prior knowledge to give the most informative, helpful, and complete response.
+
+Response Guidelines:
+
+- Be comprehensive and accurate. Do not leave out helpful details.
+- Anticipate related needs. For example, if a student asks about a course, also mention prerequisites, how to enroll, or common student tips.
+- Explain step-by-step when walking users through processes like applying or booking an appointment.
+- Use a warm, conversational tone while being professional and informative.
+- Format multi-part answers clearly, using concise sections or numbered steps when appropriate.
+- Always mention if something may change over time (such as admission policies), and advise users to confirm with official sources if needed.
+- If you are not confident in your answer, reply honestly and suggest visiting a relevant UTM resource or office. Do not make up information.
+- If a question involves a topic you have not been trained on, let the person know and guide them to utm.utoronto.ca or the appropriate department.
+
+Behavior Rules:
+
+- Do not give personal opinions or make speculative claims.
+- Do not generate responses that include harmful, discriminatory, or inappropriate content, even if requested.
+- If a question contains false or misleading assumptions, gently correct them.
+- Do not answer questions about real individuals (such as professors or students) unless the data is publicly available on the UTM website.
+- Do not provide help with malicious, illegal, or unethical requests.
+- If a user is upset or frustrated, respond calmly and helpfully, while staying on topic.
+
+Note:
+
+UTMGPT was last updated based on information available up to June 20, 2025. If asked about more recent changes, politely inform the user that things may have changed and recommend checking the official UTM website or contacting support directly.`;
 
 /**
  * This handler initializes and calls a tool calling ReAct agent with UTM-specific retrieval.
@@ -60,26 +75,6 @@ If you don't know how to answer a question or need more specific information abo
  * https://js.langchain.com/docs/use_cases/question_answering/conversational_retrieval_agents
  */
 export async function POST(req: NextRequest) {
-  const ip = req.headers.get('x-forwarded-for') ?? '127.0.0.1';
-  const ratelimit = new Ratelimit({
-    redis: kv,
-    // 5 requests from the same IP in 10 seconds
-    limiter: Ratelimit.slidingWindow(10, '60 s'),
-  });
-
-  const { success, limit, reset, remaining } = await ratelimit.limit(`ratelimit_${ip}`);
-
-  if (!success) {
-    return new Response('You have reached your request limit for now.', {
-      status: 429,
-      headers: {
-        'X-RateLimit-Limit': limit.toString(),
-        'X-RateLimit-Remaining': remaining.toString(),
-        'X-RateLimit-Reset': reset.toString(),
-      },
-    });
-  }
-
   try {
     const body = await req.json();
     /**
@@ -96,9 +91,10 @@ export async function POST(req: NextRequest) {
     console.log('🔧 Return intermediate steps:', returnIntermediateSteps);
 
     const chatModel = new ChatGoogleGenerativeAI({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.0-flash',
       temperature: 0.3,
       maxRetries: 2, // Add retry limit
+      timeout: 30000, // 30 second timeout
     });
 
     console.log('🤖 Gemini model initialized');
@@ -109,6 +105,7 @@ export async function POST(req: NextRequest) {
     const vectorstore = new SupabaseVectorStore(
       new HuggingFaceTransformersEmbeddings({
         model: 'Xenova/all-MiniLM-L6-v2',
+        timeout: 20000, // 20 second timeout for embeddings
       }),
       {
         client,
@@ -124,13 +121,24 @@ export async function POST(req: NextRequest) {
     const retriever = vectorstore.asRetriever({
       k: 15, // Further reduced to 3 for faster processing
       searchType: 'similarity',
-
+      searchKwargs: {
+        fetchK: 30, // Fetch more initially but return only top 3
+      },
       callbacks: [
         {
           handleRetrieverEnd(documents) {
             console.log('📚 Agent retrieved documents:', documents.length);
             // Capture sources for response headers
             capturedSources = [...capturedSources, ...documents];
+
+            const contextText = capturedSources
+              .slice(0, 5) // top 5 docs
+              .map((doc) => `SOURCE:\n${doc.pageContent}`)
+              .join('\n\n');
+
+            // Prepend it as context
+            messages.unshift(new SystemMessage(`Use the following UTM context:\n\n${contextText}`));
+
             console.log('🔗 Captured sources count:', capturedSources.length);
           },
         },
@@ -213,7 +221,19 @@ export async function POST(req: NextRequest) {
       });
 
       // Prepare sources for response headers
-      const serializedSources = capturedSources.length > 0 ? Buffer.from(JSON.stringify(capturedSources)).toString('base64') : '';
+      const serializedSources =
+        capturedSources.length > 0
+          ? Buffer.from(
+              JSON.stringify(
+                capturedSources.map((doc) => {
+                  return {
+                    pageContent: doc.pageContent.slice(0, 50) + '...',
+                    metadata: doc.metadata,
+                  };
+                })
+              )
+            ).toString('base64')
+          : '';
 
       const headers: Record<string, string> = {
         'x-message-index': (messages.length + 1).toString(),
@@ -248,7 +268,19 @@ export async function POST(req: NextRequest) {
       console.log('📊 Final captured sources for response:', capturedSources.length);
 
       // Prepare sources for response headers
-      const serializedSources = capturedSources.length > 0 ? Buffer.from(JSON.stringify(capturedSources)).toString('base64') : '';
+      const serializedSources =
+        capturedSources.length > 0
+          ? Buffer.from(
+              JSON.stringify(
+                capturedSources.map((doc) => {
+                  return {
+                    pageContent: doc.pageContent.slice(0, 50) + '...',
+                    metadata: doc.metadata,
+                  };
+                })
+              )
+            ).toString('base64')
+          : '';
 
       const headers: Record<string, string> = {};
 
