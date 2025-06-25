@@ -67,7 +67,7 @@ export function ChatMessageBubble(props: {
   return (
     <div
       className={cn(
-        `rounded-[24px] max-w-[80%] mb-8 flex`,
+        `rounded-[24px] max-w-[80%] mb-8 fr items-start`,
         props.message.role === "user"
           ? "bg-secondary text-secondary-foreground px-4 py-2"
           : null,
@@ -80,49 +80,47 @@ export function ChatMessageBubble(props: {
         </div>
       )}
 
-      <div className="flex flex-col">
-        <div className="prose prose-sm max-w-none prose-gray dark:prose-invert">
-          <ReactMarkdown
-            components={{
-              // Custom styling for different markdown elements
-              h1: ({ children }) => (
-                <h1 className="text-lg font-bold mb-2 mt-0">{children}</h1>
-              ),
-              h2: ({ children }) => (
-                <h2 className="text-base font-semibold mb-2 mt-3">
-                  {children}
-                </h2>
-              ),
-              h3: ({ children }) => (
-                <h3 className="text-sm font-semibold mb-1 mt-2">{children}</h3>
-              ),
-              p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
-              ul: ({ children }) => (
-                <ul className="list-disc ml-4 mb-2 space-y-1">{children}</ul>
-              ),
-              ol: ({ children }) => (
-                <ol className="list-decimal ml-4 mb-2 space-y-1">{children}</ol>
-              ),
-              li: ({ children }) => <li className="text-sm">{children}</li>,
-              strong: ({ children }) => (
-                <strong className="font-semibold">{children}</strong>
-              ),
-              em: ({ children }) => <em className="italic">{children}</em>,
-              code: ({ children }) => (
-                <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono">
-                  {children}
-                </code>
-              ),
-              pre: ({ children }) => (
-                <pre className="bg-muted p-2 rounded-md overflow-x-auto text-xs">
-                  {children}
-                </pre>
-              ),
-            }}
-          >
-            {props.message.content}
-          </ReactMarkdown>
-        </div>
+      {/* <div className="flex flex-col"> */}
+      <div className="prose prose-sm max-w-none prose-gray dark:prose-invert">
+        <ReactMarkdown
+          components={{
+            // Custom styling for different markdown elements
+            h1: ({ children }) => (
+              <h1 className="text-lg font-bold mb-2 mt-0">{children}</h1>
+            ),
+            h2: ({ children }) => (
+              <h2 className="text-base font-semibold mb-2 mt-3">{children}</h2>
+            ),
+            h3: ({ children }) => (
+              <h3 className="text-sm font-semibold mb-1 mt-2">{children}</h3>
+            ),
+            p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+            ul: ({ children }) => (
+              <ul className="list-disc ml-4 mb-2 space-y-1">{children}</ul>
+            ),
+            ol: ({ children }) => (
+              <ol className="list-decimal ml-4 mb-2 space-y-1">{children}</ol>
+            ),
+            li: ({ children }) => <li className="text-sm">{children}</li>,
+            strong: ({ children }) => (
+              <strong className="font-semibold">{children}</strong>
+            ),
+            em: ({ children }) => <em className="italic">{children}</em>,
+            code: ({ children }) => (
+              <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono">
+                {children}
+              </code>
+            ),
+            pre: ({ children }) => (
+              <pre className="bg-muted p-2 rounded-md overflow-x-auto text-xs">
+                {children}
+              </pre>
+            ),
+          }}
+        >
+          {props.message.content}
+        </ReactMarkdown>
+        {/* </div> */}
 
         <SourcesComponent sources={props.sources} />
       </div>

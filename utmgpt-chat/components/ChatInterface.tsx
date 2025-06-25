@@ -4,8 +4,15 @@ import { GuideInfoBox } from "@/components/guide/GuideInfoBox";
 import ChatSidebar from "@/components/ChatSidebar";
 import React, { useState } from "react";
 import { SidebarTrigger } from "./ui/sidebar";
+import { User } from "@supabase/supabase-js";
 
-export default function ChatPage() {
+export default function ChatPage({
+  chat_id,
+  user,
+}: {
+  chat_id: string;
+  user: User;
+}) {
   const [selectedChatId, setSelectedChatId] = useState<string | undefined>(
     undefined,
   );

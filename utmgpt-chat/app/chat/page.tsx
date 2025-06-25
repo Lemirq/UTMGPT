@@ -1,6 +1,7 @@
-import AppSidebar from "@/components/ChatSidebar";
-import ChatInterface from "@/components/ChatInterface";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import AppSidebar from '@/components/ChatSidebar';
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
+import ChatInterface from '@/components/ChatInterface';
+import { createClient } from '@/utils/supabase/server';
 
 interface ChatPageProps {
   params: {
@@ -8,10 +9,23 @@ interface ChatPageProps {
   };
 }
 
-export default function ChatPage({ params }: ChatPageProps) {
+export default async function ChatPage({ params }: ChatPageProps) {
+  const s = await createClient();
+  const {
+    data: { user },
+    error,
+  } = await s.auth.getUser();
+
+  const { data: chats, error: chatsError } = await s.from('chats').select('*').eq('user_id', user.id);
+
+  if (error || !user) {
+    console.error(error);
+    return null;
+  }
+
   return (
     <SidebarProvider>
-      <AppSidebar />
+      {user && <AppSidebar user_data={user} />}
       <SidebarInset>
         <ChatInterface chatId={params.id} />
       </SidebarInset>

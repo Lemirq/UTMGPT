@@ -2,8 +2,8 @@ import "./globals.css";
 import { Public_Sans } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
-import ChatSidebar from "@/components/ChatSidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const publicSans = Public_Sans({ subsets: ["latin"] });
 
@@ -36,18 +36,25 @@ export default function RootLayout({
         <meta name="twitter:image" content="/images/og-image.png" />
       </head>
       <body className={publicSans.className}>
-        <SidebarProvider>
-          <NuqsAdapter>
-            {/* <ChatSidebar /> */}
-            {/* <div className='bg-white flex flex-col'> */}
-            {children}
-            {/* <div className='bg-background m-4 relative grid rounded-t-2xl border border-input border-b-0 h-full'> */}
-            {/* <div className='absolute inset-0'>{children}</div> */}
-            {/* </div> */}
-            {/* </div> */}
-            <Toaster />
-          </NuqsAdapter>
-        </SidebarProvider>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <SidebarProvider>
+            <NuqsAdapter>
+              {/* <ChatSidebar /> */}
+              {/* <div className='bg-white flex flex-col'> */}
+              {children}
+              {/* <div className='bg-background m-4 relative grid rounded-t-2xl border border-input border-b-0 h-full'> */}
+              {/* <div className='absolute inset-0'>{children}</div> */}
+              {/* </div> */}
+              {/* </div> */}
+              <Toaster />
+            </NuqsAdapter>
+          </SidebarProvider>
+        </ThemeProvider>
       </body>
     </html>
   );
